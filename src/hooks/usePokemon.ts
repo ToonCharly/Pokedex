@@ -48,6 +48,7 @@ export function usePokemon() {
     
     const loadPokemon = async () => {
       try {
+        setIsTransitioning(true); // Activar transición al inicio
         const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
         const data: PokemonApiResponse = await response.json();
 
@@ -60,12 +61,30 @@ export function usePokemon() {
         const isShiny = isShinyPokemon();
         const gender = determineGender(speciesData.gender_rate);
 
+        // Seleccionar sprites correctos según género y shiny
+        let frontImage: string;
+        let backImage: string;
+
+        if (gender === "female" && data.sprites.front_female) {
+          // Hembra con sprite específico
+          frontImage = isShiny && data.sprites.front_shiny_female 
+            ? data.sprites.front_shiny_female 
+            : data.sprites.front_female;
+          backImage = isShiny && data.sprites.back_shiny_female 
+            ? data.sprites.back_shiny_female 
+            : data.sprites.back_female || data.sprites.back_default;
+        } else {
+          // Macho o sin diferencia de género
+          frontImage = isShiny ? data.sprites.front_shiny : data.sprites.front_default;
+          backImage = isShiny ? data.sprites.back_shiny : data.sprites.back_default;
+        }
+
         setPokemon({
           id: data.id,
           name: data.name,
           nickname: data.name,
-          frontImage: isShiny ? data.sprites.front_shiny : data.sprites.front_default,
-          backImage: isShiny ? data.sprites.back_shiny : data.sprites.back_default,
+          frontImage,
+          backImage,
           types: data.types.map(t => t.type.name),
           stats: data.stats.map(s => {
             const iv = generateIV(isShiny);
@@ -80,6 +99,8 @@ export function usePokemon() {
           }),
           isShiny,
           gender,
+          height: data.height * 10, // Convertir decímetros a centímetros
+          weight: data.weight / 10, // Convertir hectogramos a kilogramos
         });
         setIsFront(true);
         setIsTransitioning(false);
@@ -157,18 +178,30 @@ export function usePokemon() {
 
   const searchPokemon = () => {
     if (!searchInput.trim()) return;
-    setIsTransitioning(true);
     const query = searchInput.toLowerCase().trim();
     const numericId = parseInt(query);
     
     if (!isNaN(numericId) && numericId > 0) {
-      setPokemonId(numericId);
+      // Solo activar transición si es un ID diferente
+      if (numericId !== pokemonId) {
+        setIsTransitioning(true);
+        setPokemonId(numericId);
+      }
+      setSearchInput(""); // Limpiar input después de buscar
     } else {
       // Buscar por nombre
       fetch(`https://pokeapi.co/api/v2/pokemon/${query}`)
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error("No encontrado");
+          return res.json();
+        })
         .then((data: PokemonApiResponse) => {
-          setPokemonId(data.id);
+          // Solo activar transición si es un ID diferente
+          if (data.id !== pokemonId) {
+            setIsTransitioning(true);
+            setPokemonId(data.id);
+          }
+          setSearchInput(""); // Limpiar input después de buscar
         })
         .catch(() => {
           alert("Pokémon no encontrado");

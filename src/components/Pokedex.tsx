@@ -188,7 +188,18 @@ export default function Pokedex() {
           </div>
 
           {/* Green rectangle below pills */}
-          <div className="green-rectangle"></div>
+          <div className="green-rectangle">
+            <div className="size-weight-display">
+              <div className="size-info">
+                <span className="label">ALTURA:</span>
+                <span className="value">{pokemon.height} cm</span>
+              </div>
+              <div className="weight-info">
+                <span className="label">PESO:</span>
+                <span className="value">{pokemon.weight.toFixed(1)} kg</span>
+              </div>
+            </div>
+          </div>
 
           {/* Bottom indicators - debe estar fuera del bottom-area */}
           <div className="bottom-indicators">

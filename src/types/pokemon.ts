@@ -3,11 +3,17 @@
 export interface PokemonApiResponse {
   id: number;
   name: string;
+  height: number; // en decímetros
+  weight: number; // en hectogramos
   sprites: {
     front_default: string;
     back_default: string;
     front_shiny: string;
     back_shiny: string;
+    front_female: string | null;
+    back_female: string | null;
+    front_shiny_female: string | null;
+    back_shiny_female: string | null;
   };
   types: {
     type: {
@@ -47,6 +53,8 @@ export interface Pokemon {
   stats: PokemonStat[];
   isShiny: boolean;
   gender: "male" | "female" | "genderless";
+  height: number; // en centímetros
+  weight: number; // en kilogramos
 }
 
 export interface TeamPokemon {
