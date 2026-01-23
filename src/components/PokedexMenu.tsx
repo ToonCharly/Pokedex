@@ -8,6 +8,7 @@ interface PokedexMenuProps {
   onClose: () => void;
   onViewPokemon: (pokemon: Pokemon) => void;
   onRemoveFromTeam: (timestamp: number) => void;
+  onMultiplayer: () => void;
 }
 
 export function PokedexMenu({ 
@@ -15,7 +16,8 @@ export function PokedexMenu({
   onTeamImported, 
   onClose, 
   onViewPokemon,
-  onRemoveFromTeam 
+  onRemoveFromTeam,
+  onMultiplayer
 }: PokedexMenuProps) {
   
   const handleExport = () => {
@@ -101,6 +103,21 @@ export function PokedexMenu({
             </button>
             <button onClick={handleImport} className="menu-btn import-btn">
               CARGAR
+            </button>
+          </div>
+        </div>
+
+        <div className="menu-section">
+          <h3>JUEGO</h3>
+          <div className="menu-buttons">
+            <button 
+              onClick={() => {
+                onMultiplayer();
+                onClose();
+              }} 
+              className="menu-btn multiplayer-btn"
+            >
+              BATALLA
             </button>
           </div>
         </div>

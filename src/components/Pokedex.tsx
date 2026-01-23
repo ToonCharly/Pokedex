@@ -2,6 +2,8 @@ import { usePokemon } from "../hooks/usePokemon";
 import "../styles/pokedex.css";
 import { useState } from "react";
 import { PokedexMenu } from "./PokedexMenu";
+import { TrainerNameModal } from "./TrainerNameModal";
+import { BattleArena } from "./BattleArena";
 
 export default function Pokedex() {
   const {
@@ -28,6 +30,41 @@ export default function Pokedex() {
   const [nicknameStep, setNicknameStep] = useState<"confirm" | "input">("confirm");
   const [nicknameInput, setNicknameInput] = useState("");
   const [showMenu, setShowMenu] = useState(false);
+  const [showTrainerModal, setShowTrainerModal] = useState(false);
+  const [inBattle, setInBattle] = useState(false);
+  const [trainerName, setTrainerName] = useState("");
+  const [playerNumber, setPlayerNumber] = useState<1 | 2>(1);
+
+  const handleMultiplayer = () => {
+    if (team.length === 0) {
+      alert("Necesitas al menos 1 Pokémon en tu equipo para batallar");
+      return;
+    }
+    setShowTrainerModal(true);
+  };
+
+  const handleTrainerConfirm = (name: string, pNumber: 1 | 2) => {
+    setTrainerName(name);
+    setPlayerNumber(pNumber);
+    setShowTrainerModal(false);
+    setInBattle(true);
+  };
+
+  const handleExitBattle = () => {
+    setInBattle(false);
+    setTrainerName("");
+  };
+
+  if (inBattle) {
+    return (
+      <BattleArena
+        trainerName={trainerName}
+        playerNumber={playerNumber}
+        team={team.map(t => t.pokemon)}
+        onExit={handleExitBattle}
+      />
+    );
+  }
 
   if (!pokemon) return null;
 
@@ -108,6 +145,7 @@ export default function Pokedex() {
                   onClose={() => setShowMenu(false)}
                   onViewPokemon={viewTeamPokemon}
                   onRemoveFromTeam={removeFromTeam}
+                  onMultiplayer={handleMultiplayer}
                 />
               ) : statsView === "pokemon" ? (
                 <>
@@ -321,6 +359,13 @@ export default function Pokedex() {
             </div>
           </div>
         </div>
+      )}
+
+      {showTrainerModal && (
+        <TrainerNameModal
+          onConfirm={handleTrainerConfirm}
+          onCancel={() => setShowTrainerModal(false)}
+        />
       )}
     </div>
   );

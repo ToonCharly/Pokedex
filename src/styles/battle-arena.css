@@ -1,0 +1,344 @@
+/* ===== ARENA DE BATALLA ===== */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+.battle-arena {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, #0ea5e9 0%, #16a34a 50%, #84cc16 100%);
+  font-family: 'Press Start 2P', cursive;
+  display: flex;
+  flex-direction: column;
+  z-index: 3000;
+}
+
+/* ===== PANTALLA DE ESPERA ===== */
+.waiting-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 24px;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.waiting-screen h2 {
+  font-size: 14px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.waiting-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.waiting-screen p {
+  font-size: 10px;
+}
+
+/* ===== SELECCIÓN DE POKEMON ===== */
+.pokemon-selection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: 20px;
+}
+
+.pokemon-selection h2 {
+  color: white;
+  font-size: 12px;
+  margin-bottom: 24px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.selection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  max-width: 600px;
+}
+
+.pokemon-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 3px solid #334155;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.pokemon-card:hover {
+  transform: scale(1.05);
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.pokemon-card img {
+  width: 80px;
+  height: 80px;
+  image-rendering: pixelated;
+}
+
+.pokemon-card-name {
+  font-size: 8px;
+  color: #1e293b;
+  text-transform: uppercase;
+}
+
+.pokemon-card-hp {
+  font-size: 6px;
+  color: #64748b;
+}
+
+/* ===== CAMPO DE BATALLA ===== */
+.battle-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 40px;
+  position: relative;
+}
+
+.battle-side {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.battle-side.opponent {
+  justify-content: flex-end;
+}
+
+.battle-side.player {
+  justify-content: flex-start;
+}
+
+.trainer-info {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 2px solid white;
+}
+
+.trainer-name {
+  color: white;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.pokemon-display {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pokemon-sprite {
+  width: 120px;
+  height: 120px;
+  image-rendering: pixelated;
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
+  animation: float 3s ease-in-out infinite;
+}
+
+.opponent-sprite {
+  animation: floatOpponent 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes floatOpponent {
+  0%, 100% { transform: translateY(0) scaleX(-1); }
+  50% { transform: translateY(-10px) scaleX(-1); }
+}
+
+.pokemon-info-box {
+  background: rgba(255, 255, 255, 0.95);
+  border: 3px solid #334155;
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 200px;
+}
+
+.pokemon-name {
+  display: block;
+  font-size: 10px;
+  color: #1e293b;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.hp-bar-container {
+  background: #cbd5e1;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  border: 2px solid #334155;
+}
+
+.hp-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #f87171 0%, #dc2626 100%);
+  transition: width 0.5s ease;
+}
+
+.hp-bar.player-hp {
+  background: linear-gradient(90deg, #34d399 0%, #10b981 100%);
+}
+
+.hp-text {
+  font-size: 7px;
+  color: #475569;
+}
+
+/* ===== CONTROLES DE BATALLA ===== */
+.battle-controls {
+  background: rgba(15, 23, 42, 0.95);
+  border-top: 4px solid #334155;
+  padding: 20px;
+  display: flex;
+  gap: 20px;
+}
+
+.battle-log {
+  flex: 1;
+  background: rgba(30, 41, 59, 0.8);
+  border: 2px solid #475569;
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.log-entry {
+  color: #f1f5f9;
+  font-size: 7px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.move-buttons {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.turn-indicator {
+  color: #fbbf24;
+  font-size: 8px;
+  text-align: center;
+  margin: 0;
+}
+
+.moves-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.move-btn {
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  border: 2px solid #60a5fa;
+  border-radius: 6px;
+  padding: 12px;
+  color: white;
+  font-size: 7px;
+  font-family: 'Press Start 2P', cursive;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.move-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+.move-btn:active {
+  transform: translateY(0);
+}
+
+.move-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== OVERLAY DE GANADOR ===== */
+.winner-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  z-index: 10;
+  animation: fadeIn 0.5s ease;
+}
+
+.winner-overlay h1 {
+  color: #fbbf24;
+  font-size: 20px;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+  animation: bounce 1s ease infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* ===== BOTÓN DE SALIR ===== */
+.exit-battle-btn {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  border: 2px solid #f87171;
+  border-radius: 6px;
+  padding: 12px 24px;
+  color: white;
+  font-size: 8px;
+  font-family: 'Press Start 2P', cursive;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.exit-battle-btn:hover {
+  background: linear-gradient(180deg, #f87171 0%, #ef4444 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
+}
