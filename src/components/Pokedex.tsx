@@ -1,6 +1,7 @@
 import { usePokemon } from "../hooks/usePokemon";
 import "../styles/pokedex.css";
 import { useState } from "react";
+import { PokedexMenu } from "./PokedexMenu";
 
 export default function Pokedex() {
   const {
@@ -19,12 +20,14 @@ export default function Pokedex() {
     addToTeam,
     removeFromTeam,
     viewTeamPokemon,
+    setTeam,
   } = usePokemon();
 
   const [statsView, setStatsView] = useState<"attack" | "defense" | "pokemon">("pokemon");
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const [nicknameStep, setNicknameStep] = useState<"confirm" | "input">("confirm");
   const [nicknameInput, setNicknameInput] = useState("");
+  const [showMenu, setShowMenu] = useState(false);
 
   if (!pokemon) return null;
 
@@ -77,7 +80,11 @@ export default function Pokedex() {
         {/* LEFT PANEL */}
         <div className="pokedex-left">
           {/* Top decorations */}
-          <div className="top-circle-blue"></div>
+          <div 
+            className="top-circle-blue" 
+            onClick={() => setShowMenu(true)}
+            style={{ cursor: 'pointer' }}
+          ></div>
           <div className="top-lights">
             <div className="light-dot red"></div>
             <div className="light-dot yellow"></div>
@@ -94,7 +101,15 @@ export default function Pokedex() {
               className={`pokemon-screen ${isTransitioning ? "opacity-0" : "opacity-100"}`}
               onClick={isFront ? showBack : showFront}
             >
-              {statsView === "pokemon" ? (
+              {showMenu ? (
+                <PokedexMenu
+                  team={team}
+                  onTeamImported={setTeam}
+                  onClose={() => setShowMenu(false)}
+                  onViewPokemon={viewTeamPokemon}
+                  onRemoveFromTeam={removeFromTeam}
+                />
+              ) : statsView === "pokemon" ? (
                 <>
                   <img
                     src={isFront ? pokemon.frontImage : pokemon.backImage}

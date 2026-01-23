@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Pokemon, PokemonApiResponse, PokemonSpeciesResponse, TeamPokemon } from "../types/pokemon";
+import { loadTeamData, saveTeamData } from "../utils/storage";
 
 // Genera un IV aleatorio (0-31)
 const generateIV = (isShiny: boolean) => {
@@ -26,7 +27,21 @@ export function usePokemon() {
   const [isFront, setIsFront] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [searchInput, setSearchInput] = useState("");
-  const [team, setTeam] = useState<TeamPokemon[]>([]);
+  
+  // Cargar equipo desde localStorage al iniciar
+  const [team, setTeam] = useState<TeamPokemon[]>(() => {
+    const savedData = loadTeamData();
+    return savedData.team;
+  });
+
+  // Guardar equipo automáticamente cada vez que cambie
+  useEffect(() => {
+    const savedData = loadTeamData();
+    saveTeamData({
+      ...savedData,
+      team,
+    });
+  }, [team]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -201,6 +216,7 @@ export function usePokemon() {
     searchPokemon,
     updateNickname,
     team,
+    setTeam,
     addToTeam,
     removeFromTeam,
     viewTeamPokemon,

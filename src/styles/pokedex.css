@@ -65,6 +65,20 @@
     inset -3px -3px 6px rgba(0,0,0,.3),
     inset 3px 3px 6px rgba(255,255,255,.4),
     0 4px 8px rgba(0,0,0,.3);
+  transition: all 0.2s ease;
+}
+
+.top-circle-blue:hover {
+  background: linear-gradient(135deg, #93c5fd, #60a5fa);
+  box-shadow: 
+    inset -3px -3px 6px rgba(0,0,0,.3),
+    inset 3px 3px 6px rgba(255,255,255,.4),
+    0 4px 12px rgba(59, 130, 246, 0.6);
+  transform: scale(1.05);
+}
+
+.top-circle-blue:active {
+  transform: scale(0.95);
 }
 
 /* Top lights */
