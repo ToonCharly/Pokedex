@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Pokemon, PokemonApiResponse, PokemonSpeciesResponse, TeamPokemon } from "../types/pokemon";
+import type { Pokemon, PokemonApiResponse, PokemonSpeciesResponse, TeamPokemon, PokemonMove } from "../types/pokemon";
 import { loadTeamData, saveTeamData } from "../utils/storage";
 
 // Genera un IV aleatorio (0-31)
@@ -20,6 +20,41 @@ const determineGender = (genderRate: number): "male" | "female" | "genderless" =
   const femaleChance = genderRate / 8;
   return Math.random() < femaleChance ? "female" : "male";
 };
+
+// Obtiene los movimientos de un Pokémon (máximo 4)
+const loadPokemonMoves = async (pokemonId: number): Promise<PokemonMove[]> => {
+  try {
+    const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
+    const data: PokemonApiResponse = await response.json();
+
+    // Obtener hasta 4 movimientos
+    const moves: PokemonMove[] = [];
+    for (let i = 0; i < Math.min(4, data.moves?.length || 0); i++) {
+      const moveUrl = data.moves![i].move.url;
+      const moveResponse = await fetch(moveUrl);
+      const moveData = await moveResponse.json();
+      
+      moves.push({
+        name: moveData.name.charAt(0).toUpperCase() + moveData.name.slice(1),
+        power: moveData.power || 0,
+        accuracy: moveData.accuracy || 100,
+        type: moveData.type.name,
+      });
+    }
+    return moves.length > 0 ? moves : getDefaultMoves();
+  } catch (error) {
+    console.error("Error loading moves:", error);
+    return getDefaultMoves();
+  }
+};
+
+// Movimientos por defecto si hay error
+const getDefaultMoves = (): PokemonMove[] => [
+  { name: "Placaje", power: 40, accuracy: 100, type: "normal" },
+  { name: "Rayo", power: 90, accuracy: 100, type: "electric" },
+  { name: "Ascuas", power: 40, accuracy: 100, type: "fire" },
+  { name: "Pistola Agua", power: 40, accuracy: 100, type: "water" },
+];
 
 export function usePokemon() {
   const [pokemonId, setPokemonId] = useState(1);
@@ -48,7 +83,7 @@ export function usePokemon() {
     
     const loadPokemon = async () => {
       try {
-        setIsTransitioning(true); // Activar transición al inicio
+        setIsTransitioning(true);
         const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
         const data: PokemonApiResponse = await response.json();
 
@@ -66,7 +101,6 @@ export function usePokemon() {
         let backImage: string;
 
         if (gender === "female" && data.sprites.front_female) {
-          // Hembra con sprite específico
           frontImage = isShiny && data.sprites.front_shiny_female 
             ? data.sprites.front_shiny_female 
             : data.sprites.front_female;
@@ -74,10 +108,14 @@ export function usePokemon() {
             ? data.sprites.back_shiny_female 
             : data.sprites.back_female || data.sprites.back_default;
         } else {
-          // Macho o sin diferencia de género
           frontImage = isShiny ? data.sprites.front_shiny : data.sprites.front_default;
           backImage = isShiny ? data.sprites.back_shiny : data.sprites.back_default;
         }
+
+        // Cargar movimientos
+        const moves = await loadPokemonMoves(pokemonId);
+
+        if (isCancelled) return;
 
         setPokemon({
           id: data.id,
@@ -99,8 +137,9 @@ export function usePokemon() {
           }),
           isShiny,
           gender,
-          height: data.height * 10, // Convertir decímetros a centímetros
-          weight: data.weight / 10, // Convertir hectogramos a kilogramos
+          height: data.height * 10,
+          weight: data.weight / 10,
+          moves,
         });
         setIsFront(true);
         setIsTransitioning(false);

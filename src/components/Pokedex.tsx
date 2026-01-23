@@ -119,7 +119,7 @@ export default function Pokedex() {
           {/* Top decorations */}
           <div 
             className="top-circle-blue" 
-            onClick={() => setShowMenu(true)}
+            onClick={() => setShowMenu(!showMenu)}
             style={{ cursor: 'pointer' }}
           ></div>
           <div className="top-lights">

@@ -113,7 +113,6 @@ export function PokedexMenu({
             <button 
               onClick={() => {
                 onMultiplayer();
-                onClose();
               }} 
               className="menu-btn multiplayer-btn"
             >

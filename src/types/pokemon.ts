@@ -55,6 +55,14 @@ export interface Pokemon {
   gender: "male" | "female" | "genderless";
   height: number; // en centímetros
   weight: number; // en kilogramos
+  moves: PokemonMove[];
+}
+
+export interface PokemonMove {
+  name: string;
+  power: number; // 0 si es status
+  accuracy: number; // 0-100
+  type: string;
 }
 
 export interface TeamPokemon {

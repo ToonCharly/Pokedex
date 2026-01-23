@@ -20,18 +20,30 @@ let waitingRoom = {
   player2: null
 };
 
+// Guardar batalla activa por nombre de entrenador/playerNumber
+let activeBattles = new Map(); // key: "player1:nombre" o "player2:nombre"
 let battles = new Map();
 
 // Calcular daño
 function calculateDamage(attackerPokemon, defenderPokemon, moveName) {
-  const moves = {
+  const defaultMoves = {
     "Placaje": { power: 40, type: "normal" },
     "Rayo": { power: 90, type: "electric" },
     "Ascuas": { power: 40, type: "fire" },
     "Pistola Agua": { power: 40, type: "water" }
   };
 
-  const move = moves[moveName] || moves["Placaje"];
+  // Buscar movimiento en los stats del Pokémon o usar default
+  let move = defaultMoves[moveName];
+  
+  if (!move && attackerPokemon.moves) {
+    const pokemonMove = attackerPokemon.moves.find(m => m.name === moveName);
+    if (pokemonMove) {
+      move = { power: pokemonMove.power, type: pokemonMove.type };
+    }
+  }
+  
+  move = move || defaultMoves["Placaje"];
   const attackStat = attackerPokemon.stats.find(s => s.name === "attack")?.total || 50;
   const defenseStat = defenderPokemon.stats.find(s => s.name === "defense")?.total || 50;
   
@@ -71,9 +83,54 @@ io.on('connection', (socket) => {
 
     // Verificar si ambos jugadores están listos
     if (waitingRoom.player1 && waitingRoom.player2) {
-      console.log('Ambos jugadores conectados, esperando selección de Pokemon...');
+      console.log('Ambos jugadores conectados, iniciando selección de Pokemon...');
+      
+      // Crear estado inicial de batalla para mostrar pantalla de selección
+      const initialState = {
+        player1: {
+          name: waitingRoom.player1.name,
+          pokemon: null,
+          hp: 0,
+          maxHp: 0
+        },
+        player2: {
+          name: waitingRoom.player2.name,
+          pokemon: null,
+          hp: 0,
+          maxHp: 0
+        },
+        turn: 1,
+        log: ['¡La batalla está por comenzar!', 'Seleccionen sus Pokemon...'],
+        winner: null
+      };
+      
+      // Emitir a ambos jugadores para que pasen a selección
+      io.to(waitingRoom.player1.socketId).emit('battleStart', initialState);
+      io.to(waitingRoom.player2.socketId).emit('battleStart', initialState);
     } else {
       socket.emit('waitingForOpponent');
+    }
+  });
+
+  socket.on('rejoinBattle', ({ trainerName, playerNumber }) => {
+    console.log(`${trainerName} reconectando como Jugador ${playerNumber}`);
+    
+    // Buscar batalla guardada
+    const battleKey = `${playerNumber}:${trainerName}`;
+    const savedBattle = activeBattles.get(battleKey);
+    
+    if (savedBattle) {
+      console.log('Batalla encontrada, restaurando...');
+      // Actualizar el socketId con la nueva conexión
+      const playerData = playerNumber === 1 ? waitingRoom.player1 : waitingRoom.player2;
+      if (playerData) {
+        playerData.socketId = socket.id;
+      }
+      // Enviar estado actual de la batalla
+      socket.emit('battleUpdate', savedBattle.battleState);
+    } else {
+      console.log('No se encontró batalla, comenzar nueva...');
+      socket.emit('joinBattle', { trainerName, playerNumber });
     }
   });
 
@@ -120,6 +177,10 @@ io.on('connection', (socket) => {
         player1Socket: waitingRoom.player1.socketId,
         player2Socket: waitingRoom.player2.socketId
       });
+      
+      // Guardar también en activeBattles para reconexiones
+      activeBattles.set(`1:${waitingRoom.player1.name}`, { battleState });
+      activeBattles.set(`2:${waitingRoom.player2.name}`, { battleState });
     }
   });
 
@@ -154,6 +215,8 @@ io.on('connection', (socket) => {
       
       // Limpiar batalla
       battles.delete('current');
+      activeBattles.delete(`1:${state.player1.name}`);
+      activeBattles.delete(`2:${state.player2.name}`);
       waitingRoom = { player1: null, player2: null };
       return;
     }
@@ -161,6 +224,10 @@ io.on('connection', (socket) => {
     // Cambiar turno
     state.turn = state.turn === 1 ? 2 : 1;
     state.log.push(`Turno de ${state.turn === 1 ? state.player1.name : state.player2.name}`);
+    
+    // Guardar estado actualizado en activeBattles
+    activeBattles.set(`1:${state.player1.name}`, { battleState: state });
+    activeBattles.set(`2:${state.player2.name}`, { battleState: state });
     
     // Enviar actualización
     io.to(battle.player1Socket).emit('battleUpdate', state);
@@ -172,10 +239,18 @@ io.on('connection', (socket) => {
     
     // Limpiar waiting room si el jugador se desconecta
     if (waitingRoom.player1?.socketId === socket.id) {
+      const player1Name = waitingRoom.player1.name;
       waitingRoom.player1 = null;
+      // Limpiar activeBattles
+      activeBattles.delete(`1:${player1Name}`);
+      activeBattles.delete(`2:*`); // Limpiar el oponente también
     }
     if (waitingRoom.player2?.socketId === socket.id) {
+      const player2Name = waitingRoom.player2.name;
       waitingRoom.player2 = null;
+      // Limpiar activeBattles
+      activeBattles.delete(`2:${player2Name}`);
+      activeBattles.delete(`1:*`); // Limpiar el oponente también
     }
     
     // Notificar al otro jugador si hay una batalla activa
@@ -186,6 +261,10 @@ io.on('connection', (socket) => {
         io.to(otherSocket).emit('opponentDisconnected');
       }
       battles.delete('current');
+      // Limpiar activeBattles también
+      Array.from(activeBattles.keys()).forEach(key => {
+        activeBattles.delete(key);
+      });
     }
   });
 });

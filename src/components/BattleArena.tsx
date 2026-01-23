@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import type { Pokemon } from "../types/pokemon";
+import { loadTeamData } from "../utils/storage";
 import "../styles/battle-arena.css";
 
 interface BattleArenaProps {
@@ -30,10 +31,61 @@ interface BattleState {
 
 export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleArenaProps) {
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [battleState, setBattleState] = useState<BattleState | null>(null);
-  const [selectedPokemon, setSelectedPokemon] = useState<Pokemon | null>(null);
-  const [waiting, setWaiting] = useState(true);
+  
+  // Restaurar estado de batalla desde sessionStorage si existe
+  const [battleState, setBattleState] = useState<BattleState | null>(() => {
+    const saved = sessionStorage.getItem('battleState');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.battleState;
+      } catch {
+        sessionStorage.removeItem('battleState');
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const [selectedPokemon, setSelectedPokemon] = useState<Pokemon | null>(() => {
+    const saved = sessionStorage.getItem('battleState');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.selectedPokemon;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const [waiting, setWaiting] = useState(() => {
+    const saved = sessionStorage.getItem('battleState');
+    return !saved; // Si hay estado guardado, no esperamos
+  });
+
   const [selectedMove, setSelectedMove] = useState<string | null>(null);
+  
+  // Cargar equipo desde localStorage si está vacío
+  const actualTeam = team.length === 0 ? (() => {
+    const savedData = loadTeamData();
+    const loadedTeam = savedData.team.map(t => t.pokemon);
+    console.log("Equipo cargado desde localStorage:", loadedTeam);
+    return loadedTeam;
+  })() : team;
+
+  // Guardar estado de batalla en sessionStorage para persistencia
+  useEffect(() => {
+    if (battleState && selectedPokemon) {
+      sessionStorage.setItem('battleState', JSON.stringify({
+        battleState,
+        selectedPokemon,
+        trainerName,
+        playerNumber,
+      }));
+    }
+  }, [battleState, selectedPokemon, trainerName, playerNumber]);
 
   useEffect(() => {
     // Conectar al servidor Socket.io
@@ -41,7 +93,14 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
     
     newSocket.on("connect", () => {
       console.log("Conectado al servidor");
-      newSocket.emit("joinBattle", { trainerName, playerNumber });
+      // Si hay una batalla guardada, reconectar a ella
+      const savedBattleState = sessionStorage.getItem('battleState');
+      if (savedBattleState) {
+        console.log("Reconectando a batalla existente...");
+        newSocket.emit("rejoinBattle", { trainerName, playerNumber });
+      } else {
+        newSocket.emit("joinBattle", { trainerName, playerNumber });
+      }
     });
 
     newSocket.on("waitingForOpponent", () => {
@@ -65,6 +124,20 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
       setBattleState(state);
     });
 
+    newSocket.on("opponentDisconnected", () => {
+      console.log("El oponente se desconectó");
+      // El oponente se rindió, ganaste
+      const winner = playerNumber === 1 ? battleState?.player1.name : battleState?.player2.name;
+      setBattleState(prevState => 
+        prevState ? {
+          ...prevState,
+          winner: winner || "Jugador " + playerNumber,
+          log: [...prevState.log, "¡El oponente se rindió!", `¡${winner || "Jugador " + playerNumber} gana!`]
+        } : null
+      );
+    });
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSocket(newSocket);
 
     return () => {
@@ -85,9 +158,14 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
   };
 
   const handleExit = () => {
+    const confirmed = window.confirm("¿Estás seguro de que quieres salir de la batalla?");
+    if (!confirmed) return;
+    
     if (socket) {
       socket.disconnect();
     }
+    // Limpiar estado de batalla al salir
+    sessionStorage.removeItem('battleState');
     onExit();
   };
 
@@ -111,25 +189,34 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
   }
 
   if (!selectedPokemon) {
+    console.log("Equipo disponible:", actualTeam);
+    console.log("Cantidad de Pokemon:", actualTeam.length);
+    
     return (
       <div className="battle-arena">
         <div className="pokemon-selection">
           <h2>ELIGE TU POKEMON</h2>
-          <div className="selection-grid">
-            {team.map((pokemon, index) => (
-              <div
-                key={index}
-                className="pokemon-card"
-                onClick={() => selectPokemon(pokemon)}
-              >
-                <img src={pokemon.frontImage} alt={pokemon.name} />
-                <span className="pokemon-card-name">{pokemon.nickname}</span>
-                <span className="pokemon-card-hp">
-                  HP: {pokemon.stats.find(s => s.name === "hp")?.total || 100}
-                </span>
-              </div>
-            ))}
-          </div>
+          {actualTeam.length === 0 ? (
+            <p style={{ color: 'white', fontSize: '12px', textAlign: 'center' }}>
+              No tienes Pokémon en tu equipo. Agrega algunos primero.
+            </p>
+          ) : (
+            <div className="selection-grid">
+              {actualTeam.map((pokemon, index) => (
+                <div
+                  key={index}
+                  className="pokemon-card"
+                  onClick={() => selectPokemon(pokemon)}
+                >
+                  <img src={pokemon.frontImage} alt={pokemon.name} />
+                  <span className="pokemon-card-name">{pokemon.nickname}</span>
+                  <span className="pokemon-card-hp">
+                    HP: {pokemon.stats.find(s => s.name === "hp")?.total || 100}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -139,7 +226,19 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
   const myState = playerNumber === 1 ? battleState.player1 : battleState.player2;
   const opponentState = playerNumber === 1 ? battleState.player2 : battleState.player1;
 
-  const moves = ["Placaje", "Rayo", "Ascuas", "Pistola Agua"];
+  // Obtener movimientos del Pokémon actual - con fallback a movimientos por defecto
+  const defaultMoves = [
+    { name: "Placaje", power: 40, accuracy: 100, type: "normal" },
+    { name: "Rayo", power: 90, accuracy: 100, type: "electric" },
+    { name: "Ascuas", power: 40, accuracy: 100, type: "fire" },
+    { name: "Pistola Agua", power: 40, accuracy: 100, type: "water" },
+  ];
+  
+  const availableMoves = selectedPokemon?.moves && selectedPokemon.moves.length > 0 
+    ? selectedPokemon.moves 
+    : defaultMoves;
+
+  console.log("Pokémon seleccionado:", selectedPokemon?.name, "Movimientos:", availableMoves);
 
   return (
     <div className="battle-arena">
@@ -223,20 +322,26 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
             <>
               <p className="turn-indicator">¡TU TURNO!</p>
               <div className="moves-grid">
-                {moves.map((move) => (
+                {availableMoves.map((move) => (
                   <button
-                    key={move}
-                    onClick={() => attack(move)}
+                    key={move.name}
+                    onClick={() => attack(move.name)}
                     className="move-btn"
                     disabled={!!selectedMove}
+                    title={`${move.type} - Poder: ${move.power}`}
                   >
-                    {move}
+                    {move.name}
                   </button>
                 ))}
               </div>
             </>
           ) : (
             !battleState.winner && <p className="turn-indicator">TURNO DEL OPONENTE...</p>
+          )}
+          {!battleState.winner && (
+            <button onClick={handleExit} className="exit-battle-btn" style={{ marginTop: '10px' }}>
+              SALIR DE BATALLA
+            </button>
           )}
         </div>
       </div>
