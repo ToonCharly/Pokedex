@@ -48,6 +48,7 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
   });
 
   const [selectedMove, setSelectedMove] = useState<string | null>(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   
   // Cargar equipo desde localStorage si está vacío
   const actualTeam = team.length === 0 ? (() => {
@@ -108,15 +109,16 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
 
     newSocket.on("opponentDisconnected", () => {
       console.log("El oponente se desconectó");
-      // El oponente se rindió, ganaste
-      const winner = playerNumber === 1 ? battleState?.player1.name : battleState?.player2.name;
-      setBattleState(prevState => 
-        prevState ? {
+      // El oponente se salió, ganaste
+      setBattleState(prevState => {
+        if (!prevState) return null;
+        const winner = playerNumber === 1 ? prevState.player1.name : prevState.player2.name;
+        return {
           ...prevState,
-          winner: winner || "Jugador " + playerNumber,
-          log: [...prevState.log, "¡El oponente se rindió!", `¡${winner || "Jugador " + playerNumber} gana!`]
-        } : null
-      );
+          winner: winner,
+          log: [...prevState.log, "¡El otro jugador se salió de la partida!", `¡${winner} gana!`]
+        };
+      });
     });
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -140,14 +142,26 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
   };
 
   const handleExit = () => {
-    const confirmed = window.confirm("¿Estás seguro de que quieres salir de la batalla?");
-    if (!confirmed) return;
-    
+    // Si ya hay un ganador, salir directamente sin confirmación
+    if (battleState?.winner) {
+      if (socket) {
+        socket.disconnect();
+      }
+      sessionStorage.removeItem('battleState');
+      onExit();
+      return;
+    }
+
+    // Si la batalla está en curso, mostrar modal de confirmación
+    setShowExitConfirm(true);
+  };
+
+  const handleConfirmExit = () => {
     if (socket) {
       socket.disconnect();
     }
-    // Limpiar estado de batalla al salir
     sessionStorage.removeItem('battleState');
+    setShowExitConfirm(false);
     onExit();
   };
 
@@ -222,11 +236,22 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
 
   console.log("Pokémon seleccionado:", selectedPokemon?.name, "Movimientos:", availableMoves);
 
+  const didIWin = battleState.winner === trainerName;
+  const opponentLeft = battleState.log.some(msg => msg.includes("se salió de la partida"));
+  const winnerMessage = battleState.winner 
+    ? (didIWin ? "¡GANASTE LA BATALLA!" : "¡PERDISTE LA BATALLA!")
+    : "";
+
   return (
     <div className="battle-arena">
       {battleState.winner && (
         <div className="winner-overlay">
-          <h1>¡{battleState.winner} GANA!</h1>
+          {didIWin && opponentLeft && (
+            <p className="opponent-left-message">El otro jugador se salió de la partida</p>
+          )}
+          <h1>{winnerMessage}</h1>
+          {didIWin && <p className="congratulations">Felicidades!!!!!!</p>}
+          <p className="winner-name">{battleState.winner}</p>
           <button onClick={handleExit} className="exit-battle-btn">
             SALIR
           </button>
@@ -327,6 +352,21 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
           )}
         </div>
       </div>
+
+      {/* Exit Confirm Modal - Pokemon style */}
+      {showExitConfirm && (
+        <div className="pokemon-modal-overlay">
+          <div className="pokemon-modal">
+            <div className="pokemon-modal-text">
+              ¿Estás seguro de que quieres salir de la batalla?
+            </div>
+            <div className="pokemon-modal-buttons">
+              <button onClick={handleConfirmExit}>SÍ</button>
+              <button onClick={() => setShowExitConfirm(false)}>NO</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

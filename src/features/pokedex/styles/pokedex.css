@@ -175,7 +175,7 @@
   top: 10px;
   right: 10px;
   background: linear-gradient(135deg, #fbbf24, #f59e0b);
-  color: #000;
+  color: #fff;
   padding: 3px 10px;
   border-radius: 5px;
   font-size: 11px;
@@ -778,8 +778,11 @@
   text-shadow: none;
 }
 
-.pokemon-name {
-  color: #60a5fa;
+.pokedex-right .pokemon-name,
+.top-info-panel .pokemon-name {
+  color: #f1f5f9 !important;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 /* Compact team grid - 2 rows x 3 columns */
@@ -1271,7 +1274,7 @@
 
 .pokemon-modal-buttons button:hover {
   background: #e8e8e8;
-  color: #000000;
+  color: #1e293b;
 }
 
 .pokemon-modal-buttons button:active {

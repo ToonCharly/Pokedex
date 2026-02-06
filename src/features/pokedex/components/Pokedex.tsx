@@ -26,6 +26,7 @@ export default function Pokedex() {
   } = usePokemon();
 
   const [statsView, setStatsView] = useState<"attack" | "defense" | "pokemon">("pokemon");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const [nicknameStep, setNicknameStep] = useState<"confirm" | "input">("confirm");
   const [nicknameInput, setNicknameInput] = useState("");
@@ -69,6 +70,11 @@ export default function Pokedex() {
   if (!pokemon) return null;
 
   const handleAddToTeam = () => {
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmAdd = () => {
+    setShowConfirmModal(false);
     setNicknameInput(pokemon.name);
     setNicknameStep("confirm");
     setShowNicknameModal(true);
@@ -138,16 +144,7 @@ export default function Pokedex() {
               className={`pokemon-screen ${isTransitioning ? "opacity-0" : "opacity-100"}`}
               onClick={isFront ? showBack : showFront}
             >
-              {showMenu ? (
-                <PokedexMenu
-                  team={team}
-                  onTeamImported={setTeam}
-                  onClose={() => setShowMenu(false)}
-                  onViewPokemon={viewTeamPokemon}
-                  onRemoveFromTeam={removeFromTeam}
-                  onMultiplayer={handleMultiplayer}
-                />
-              ) : statsView === "pokemon" ? (
+              {statsView === "pokemon" ? (
                 <>
                   <img
                     src={isFront ? pokemon.frontImage : pokemon.backImage}
@@ -323,6 +320,21 @@ export default function Pokedex() {
         </div>
       </div>
 
+      {/* Confirm Add Modal - Pokemon style */}
+      {showConfirmModal && (
+        <div className="pokemon-modal-overlay">
+          <div className="pokemon-modal">
+            <div className="pokemon-modal-text">
+              ¿Estás seguro que quieres agregar a {pokemon.name.toUpperCase()}?
+            </div>
+            <div className="pokemon-modal-buttons">
+              <button onClick={handleConfirmAdd}>SÍ</button>
+              <button onClick={() => setShowConfirmModal(false)}>NO</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Nickname Modal - Pokemon style */}
       {showNicknameModal && (
         <div className="pokemon-modal-overlay">
@@ -366,6 +378,22 @@ export default function Pokedex() {
           onConfirm={handleTrainerConfirm}
           onCancel={() => setShowTrainerModal(false)}
         />
+      )}
+
+      {/* Menu como ventana modal independiente */}
+      {showMenu && (
+        <div className="menu-modal-overlay" onClick={() => setShowMenu(false)}>
+          <div className="menu-modal-window" onClick={(e) => e.stopPropagation()}>
+            <PokedexMenu
+              team={team}
+              onTeamImported={setTeam}
+              onClose={() => setShowMenu(false)}
+              onViewPokemon={viewTeamPokemon}
+              onRemoveFromTeam={removeFromTeam}
+              onMultiplayer={handleMultiplayer}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

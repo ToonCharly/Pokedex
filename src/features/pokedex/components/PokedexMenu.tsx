@@ -46,9 +46,11 @@ export function PokedexMenu({
   };
 
   return (
-    <div className="pokedex-menu-overlay" onClick={(e) => e.stopPropagation()}>
-      <div className="pokedex-menu">
-        <h2 className="menu-title">MENU</h2>
+    <div className="pokedex-menu">
+      <h2 className="menu-title">
+        MENU
+        <button className="close-menu-btn" onClick={onClose}>×</button>
+      </h2>
         
         <div className="menu-section">
           <h3>EQUIPO {team.length}/6</h3>
@@ -113,6 +115,7 @@ export function PokedexMenu({
             <button 
               onClick={() => {
                 onMultiplayer();
+                onClose();
               }} 
               className="menu-btn multiplayer-btn"
             >
@@ -120,11 +123,6 @@ export function PokedexMenu({
             </button>
           </div>
         </div>
-
-        <button onClick={onClose} className="menu-btn exit-btn">
-          SALIR
-        </button>
-      </div>
     </div>
   );
 }
