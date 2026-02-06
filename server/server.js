@@ -7,10 +7,17 @@ const app = express();
 app.use(cors());
 
 const httpServer = createServer(app);
+
+// Configurar CORS dinámicamente según el entorno
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [process.env.FRONTEND_URL || 'https://pokedex.onrender.com']
+  : ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"];
+
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
-    methods: ["GET", "POST"]
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
@@ -332,7 +339,8 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`🎮 Servidor Pokemon Battle iniciado en puerto ${PORT}`);
+  console.log(`🌐 CORS habilitado para: ${allowedOrigins.join(', ')}`);
 });

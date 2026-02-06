@@ -72,8 +72,9 @@ export function BattleArena({ trainerName, playerNumber, team, battleMode, onExi
   }, [battleState, selectedPokemon, trainerName, playerNumber]);
 
   useEffect(() => {
-    // Conectar al servidor Socket.io
-    const newSocket = io("http://localhost:3001");
+    // Conectar al servidor Socket.io usando variable de entorno
+    const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+    const newSocket = io(serverUrl);
     
     newSocket.on("connect", () => {
       console.log("Conectado al servidor");
