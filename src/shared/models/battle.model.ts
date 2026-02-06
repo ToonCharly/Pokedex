@@ -7,13 +7,18 @@ export interface BattleState {
     pokemon: Pokemon | null;
     hp: number;
     maxHp: number;
+    remainingPokemon: number;
+    currentIndex: number;
   };
   player2: {
     name: string;
     pokemon: Pokemon | null;
     hp: number;
     maxHp: number;
+    remainingPokemon: number;
+    currentIndex: number;
   };
+  battleMode: number;
   turn: 1 | 2;
   log: string[];
   winner: string | null;

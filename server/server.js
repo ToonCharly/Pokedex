@@ -64,12 +64,15 @@ function calculateDamage(attackerPokemon, defenderPokemon, moveName) {
 io.on('connection', (socket) => {
   console.log('Cliente conectado:', socket.id);
 
-  socket.on('joinBattle', ({ trainerName, playerNumber }) => {
-    console.log(`${trainerName} se unió como Jugador ${playerNumber}`);
+  socket.on('joinBattle', ({ trainerName, playerNumber, team, battleMode }) => {
+    console.log(`${trainerName} se unió como Jugador ${playerNumber} con modo ${battleMode || 1}v${battleMode || 1}`);
     
     const playerData = {
       socketId: socket.id,
       name: trainerName,
+      team: team || [],
+      battleMode: battleMode || 1,
+      currentPokemonIndex: 0,
       pokemon: null,
       hp: 0,
       maxHp: 0
@@ -85,6 +88,15 @@ io.on('connection', (socket) => {
     if (waitingRoom.player1 && waitingRoom.player2) {
       console.log('Ambos jugadores conectados, iniciando selección de Pokemon...');
       
+      // Determinar el modo de batalla (modo libre = 0, o el menor de los dos)
+      const finalBattleMode = waitingRoom.player1.battleMode === 0 || waitingRoom.player2.battleMode === 0
+        ? 0 // Modo libre
+        : Math.min(waitingRoom.player1.battleMode, waitingRoom.player2.battleMode);
+      
+      console.log(`Modo de batalla: ${finalBattleMode === 0 ? 'LIBRE' : finalBattleMode + 'v' + finalBattleMode}`);
+      console.log(`Jugador 1: ${waitingRoom.player1.team.length} Pokémon`);
+      console.log(`Jugador 2: ${waitingRoom.player2.team.length} Pokémon`);
+      
       // Crear estado inicial de batalla para mostrar pantalla de selección
       const initialState = {
         player1: {
@@ -99,6 +111,7 @@ io.on('connection', (socket) => {
           hp: 0,
           maxHp: 0
         },
+        battleMode: finalBattleMode,
         turn: 1,
         log: ['¡La batalla está por comenzar!', 'Seleccionen sus Pokemon...'],
         winner: null
@@ -138,32 +151,59 @@ io.on('connection', (socket) => {
     console.log(`Jugador ${playerNumber} seleccionó:`, pokemon.name);
     
     const playerData = playerNumber === 1 ? waitingRoom.player1 : waitingRoom.player2;
-    if (playerData) {
-      playerData.pokemon = pokemon;
-      const hpStat = pokemon.stats.find(s => s.name === "hp");
+    if (playerData && playerData.team.length > 0) {
+      // Buscar el índice del Pokémon seleccionado en el equipo
+      const selectedIndex = playerData.team.findIndex(p => 
+        p.id === pokemon.id && p.nickname === pokemon.nickname
+      );
+      
+      // Si se encuentra, usar ese índice; si no, usar el primero
+      const pokemonIndex = selectedIndex >= 0 ? selectedIndex : 0;
+      const selectedPokemon = playerData.team[pokemonIndex];
+      
+      playerData.pokemon = selectedPokemon;
+      const hpStat = selectedPokemon.stats.find(s => s.name === "hp");
       playerData.hp = hpStat ? hpStat.total : 100;
       playerData.maxHp = playerData.hp;
+      playerData.currentPokemonIndex = pokemonIndex;
+      playerData.defeatedCount = 0;
+      
+      console.log(`Jugador ${playerNumber} comenzará con ${selectedPokemon.nickname} (índice ${pokemonIndex})`);
     }
 
     // Si ambos jugadores seleccionaron Pokemon, iniciar batalla
     if (waitingRoom.player1?.pokemon && waitingRoom.player2?.pokemon) {
       console.log('¡Batalla iniciada!');
       
+      // Determinar el modo de batalla final
+      const finalBattleMode = waitingRoom.player1.battleMode === 0 || waitingRoom.player2.battleMode === 0
+        ? 0 // Modo libre
+        : Math.min(waitingRoom.player1.battleMode, waitingRoom.player2.battleMode);
+      
       const battleState = {
         player1: {
           name: waitingRoom.player1.name,
           pokemon: waitingRoom.player1.pokemon,
           hp: waitingRoom.player1.hp,
-          maxHp: waitingRoom.player1.maxHp
+          maxHp: waitingRoom.player1.maxHp,
+          remainingPokemon: waitingRoom.player1.team.length,
+          currentIndex: 0
         },
         player2: {
           name: waitingRoom.player2.name,
           pokemon: waitingRoom.player2.pokemon,
           hp: waitingRoom.player2.hp,
-          maxHp: waitingRoom.player2.maxHp
+          maxHp: waitingRoom.player2.maxHp,
+          remainingPokemon: waitingRoom.player2.team.length,
+          currentIndex: 0
         },
+        battleMode: finalBattleMode,
         turn: 1,
-        log: [`¡La batalla ha comenzado!`, `${waitingRoom.player1.name} vs ${waitingRoom.player2.name}!`],
+        log: [
+          `¡La batalla ha comenzado!`, 
+          `${waitingRoom.player1.name} (${waitingRoom.player1.team.length}) vs ${waitingRoom.player2.name} (${waitingRoom.player2.team.length})!`, 
+          `Modo: ${finalBattleMode === 0 ? 'LIBRE' : finalBattleMode + 'v' + finalBattleMode}`
+        ],
         winner: null
       };
 
@@ -204,21 +244,44 @@ io.on('connection', (socket) => {
     state.log.push(`${attacker.name} usó ${moveName}!`);
     state.log.push(`¡${defender.pokemon.nickname} recibió ${damage} de daño!`);
     
-    // Verificar si hay ganador
+    // Verificar si el Pokémon fue derrotado
     if (defender.hp <= 0) {
       state.log.push(`¡${defender.pokemon.nickname} fue debilitado!`);
-      state.winner = attacker.name;
       
-      // Enviar estado final
-      io.to(battle.player1Socket).emit('battleEnd', state);
-      io.to(battle.player2Socket).emit('battleEnd', state);
+      // Reducir contador de Pokémon restantes
+      defender.remainingPokemon--;
       
-      // Limpiar batalla
-      battles.delete('current');
-      activeBattles.delete(`1:${state.player1.name}`);
-      activeBattles.delete(`2:${state.player2.name}`);
-      waitingRoom = { player1: null, player2: null };
-      return;
+      // Verificar si hay más Pokémon disponibles
+      const defenderData = playerNumber === 1 ? waitingRoom.player2 : waitingRoom.player1;
+      const nextIndex = defender.currentIndex + 1;
+      
+      if (nextIndex < defenderData.team.length) {
+        // Cambiar al siguiente Pokémon
+        const nextPokemon = defenderData.team[nextIndex];
+        defender.pokemon = nextPokemon;
+        const hpStat = nextPokemon.stats.find(s => s.name === "hp");
+        defender.hp = hpStat ? hpStat.total : 100;
+        defender.maxHp = defender.hp;
+        defender.currentIndex = nextIndex;
+        
+        state.log.push(`¡${attacker.name} envía a ${nextPokemon.nickname}!`);
+        state.log.push(`Pokémon restantes: ${defender.remainingPokemon}`);
+      } else {
+        // No hay más Pokémon, el atacante gana
+        state.winner = attacker.name;
+        state.log.push(`¡${attacker.name} ganó la batalla!`);
+        
+        // Enviar estado final
+        io.to(battle.player1Socket).emit('battleEnd', state);
+        io.to(battle.player2Socket).emit('battleEnd', state);
+        
+        // Limpiar batalla
+        battles.delete('current');
+        activeBattles.delete(`1:${state.player1.name}`);
+        activeBattles.delete(`2:${state.player2.name}`);
+        waitingRoom = { player1: null, player2: null };
+        return;
+      }
     }
     
     // Cambiar turno

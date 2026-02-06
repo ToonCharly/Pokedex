@@ -8,10 +8,11 @@ interface BattleArenaProps {
   trainerName: string;
   playerNumber: 1 | 2;
   team: Pokemon[];
+  battleMode: number;
   onExit: () => void;
 }
 
-export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleArenaProps) {
+export function BattleArena({ trainerName, playerNumber, team, battleMode, onExit }: BattleArenaProps) {
   const [socket, setSocket] = useState<Socket | null>(null);
   
   // Restaurar estado de batalla desde sessionStorage si existe
@@ -82,7 +83,12 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
         console.log("Reconectando a batalla existente...");
         newSocket.emit("rejoinBattle", { trainerName, playerNumber });
       } else {
-        newSocket.emit("joinBattle", { trainerName, playerNumber });
+        newSocket.emit("joinBattle", { 
+          trainerName, 
+          playerNumber, 
+          team: actualTeam,
+          battleMode 
+        });
       }
     });
 
@@ -127,7 +133,7 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
     return () => {
       newSocket.disconnect();
     };
-  }, [trainerName, playerNumber]);
+  }, [trainerName, playerNumber, actualTeam, battleMode]);
 
   const selectPokemon = (pokemon: Pokemon) => {
     if (!socket || selectedPokemon) return;
@@ -263,6 +269,7 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
         <div className="battle-side opponent">
           <div className="trainer-info">
             <span className="trainer-name">{opponentState.name}</span>
+            <span className="remaining-pokemon">Pokémon: {opponentState.remainingPokemon || 0}</span>
           </div>
           {opponentState.pokemon && (
             <div className="pokemon-display">
@@ -312,6 +319,7 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
           )}
           <div className="trainer-info">
             <span className="trainer-name">{myState.name}</span>
+            <span className="remaining-pokemon">Pokémon: {myState.remainingPokemon || 0}</span>
           </div>
         </div>
       </div>

@@ -31,6 +31,10 @@ export default function Pokedex() {
   const [nicknameStep, setNicknameStep] = useState<"confirm" | "input">("confirm");
   const [nicknameInput, setNicknameInput] = useState("");
   const [showMenu, setShowMenu] = useState(false);
+  const [showBattleModeModal, setShowBattleModeModal] = useState(false);
+  const [battleMode, setBattleMode] = useState<number>(1);
+  const [showPokemonSelector, setShowPokemonSelector] = useState(false);
+  const [selectedBattleTeam, setSelectedBattleTeam] = useState<number[]>([]);
   const [showTrainerModal, setShowTrainerModal] = useState(false);
   const [inBattle, setInBattle] = useState(false);
   const [trainerName, setTrainerName] = useState("");
@@ -41,6 +45,53 @@ export default function Pokedex() {
       alert("Necesitas al menos 1 Pokémon en tu equipo para batallar");
       return;
     }
+    setShowBattleModeModal(true);
+  };
+
+  const handleBattleModeSelect = (mode: number) => {
+    if (mode === 0) {
+      // Modo libre - usar todos los Pokémon disponibles
+      setBattleMode(0);
+      setShowBattleModeModal(false);
+      setShowTrainerModal(true);
+      return;
+    }
+    
+    if (team.length < mode) {
+      alert(`Te faltan ${mode - team.length} Pokémon para jugar este modo de batalla`);
+      return;
+    }
+    
+    setBattleMode(mode);
+    setShowBattleModeModal(false);
+    
+    if (team.length > mode) {
+      // Tiene más Pokémon, necesita seleccionar
+      setSelectedBattleTeam([]);
+      setShowPokemonSelector(true);
+    } else {
+      // Tiene exactamente los necesarios
+      setShowTrainerModal(true);
+    }
+  };
+
+  const handlePokemonSelection = (index: number) => {
+    setSelectedBattleTeam(prev => {
+      if (prev.includes(index)) {
+        return prev.filter(i => i !== index);
+      } else if (prev.length < battleMode) {
+        return [...prev, index];
+      }
+      return prev;
+    });
+  };
+
+  const handleConfirmTeamSelection = () => {
+    if (selectedBattleTeam.length !== battleMode) {
+      alert(`Debes seleccionar exactamente ${battleMode} Pokémon`);
+      return;
+    }
+    setShowPokemonSelector(false);
     setShowTrainerModal(true);
   };
 
@@ -57,11 +108,18 @@ export default function Pokedex() {
   };
 
   if (inBattle) {
+    const battleTeam = battleMode === 0
+      ? team.map(t => t.pokemon) // Modo libre: todos los Pokémon
+      : selectedBattleTeam.length > 0
+        ? selectedBattleTeam.map(index => team[index].pokemon)
+        : team.slice(0, battleMode).map(t => t.pokemon);
+    
     return (
       <BattleArena
         trainerName={trainerName}
         playerNumber={playerNumber}
-        team={team.map(t => t.pokemon)}
+        team={battleTeam}
+        battleMode={battleMode}
         onExit={handleExitBattle}
       />
     );
@@ -378,6 +436,132 @@ export default function Pokedex() {
           onConfirm={handleTrainerConfirm}
           onCancel={() => setShowTrainerModal(false)}
         />
+      )}
+
+      {/* Battle Mode Selection Modal */}
+      {showBattleModeModal && (
+        <div className="pokemon-modal-overlay">
+          <div className="pokemon-modal" style={{ maxWidth: '500px' }}>
+            <div className="pokemon-modal-text" style={{ fontSize: '12px', marginBottom: '15px' }}>
+              SELECCIONA EL MODO DE BATALLA
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '10px' }}>
+              {[1, 2, 3, 4, 5, 6].map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => handleBattleModeSelect(mode)}
+                  className="pokemon-modal-buttons"
+                  style={{
+                    padding: '15px 10px',
+                    fontSize: '14px',
+                    background: team.length >= mode ? '#f8f8f8' : '#d0d0d0',
+                    cursor: team.length >= mode ? 'pointer' : 'not-allowed',
+                    border: '4px solid #303030',
+                    boxShadow: 'inset -2px -2px 0 #a8a8a8, inset 2px 2px 0 #ffffff, 4px 4px 0 rgba(0,0,0,0.2)'
+                  }}
+                  disabled={team.length < mode}
+                >
+                  {mode} vs {mode}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => handleBattleModeSelect(0)}
+              className="pokemon-modal-buttons"
+              style={{ 
+                width: '100%', 
+                padding: '12px',
+                marginBottom: '10px',
+                background: '#10b981',
+                color: '#fff',
+                fontSize: '12px',
+                fontWeight: 'bold'
+              }}
+            >
+              MODO LIBRE (Todos tus Pokémon)
+            </button>
+            <button
+              onClick={() => setShowBattleModeModal(false)}
+              className="pokemon-modal-buttons"
+              style={{ width: '100%', padding: '10px' }}
+            >
+              CANCELAR
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Pokemon Selector Modal */}
+      {showPokemonSelector && (
+        <div className="pokemon-modal-overlay">
+          <div className="pokemon-modal" style={{ maxWidth: '600px' }}>
+            <div className="pokemon-modal-text" style={{ fontSize: '11px', marginBottom: '15px' }}>
+              ELIGE {battleMode} POKÉMON PARA LA BATALLA ({selectedBattleTeam.length}/{battleMode})
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '15px' }}>
+              {team.map((member, index) => (
+                <div
+                  key={member.timestamp}
+                  onClick={() => handlePokemonSelection(index)}
+                  style={{
+                    padding: '10px',
+                    background: selectedBattleTeam.includes(index) ? '#10b981' : '#f8f8f8',
+                    border: '4px solid #303030',
+                    borderRadius: '0',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '5px',
+                    boxShadow: selectedBattleTeam.includes(index) 
+                      ? 'inset 2px 2px 0 #059669, inset -2px -2px 0 #34d399'
+                      : 'inset -2px -2px 0 #a8a8a8, inset 2px 2px 0 #ffffff'
+                  }}
+                >
+                  <img 
+                    src={member.pokemon.frontImage} 
+                    alt={member.pokemon.name}
+                    style={{ width: '48px', height: '48px', imageRendering: 'pixelated' }}
+                  />
+                  <span style={{ 
+                    fontSize: '8px', 
+                    color: selectedBattleTeam.includes(index) ? '#fff' : '#303030',
+                    fontFamily: 'Press Start 2P',
+                    textTransform: 'uppercase',
+                    textAlign: 'center'
+                  }}>
+                    {member.pokemon.nickname}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={handleConfirmTeamSelection}
+                className="pokemon-modal-buttons"
+                style={{ 
+                  flex: 1, 
+                  padding: '10px',
+                  background: selectedBattleTeam.length === battleMode ? '#10b981' : '#d0d0d0',
+                  color: selectedBattleTeam.length === battleMode ? '#fff' : '#303030'
+                }}
+                disabled={selectedBattleTeam.length !== battleMode}
+              >
+                CONFIRMAR
+              </button>
+              <button
+                onClick={() => {
+                  setShowPokemonSelector(false);
+                  setSelectedBattleTeam([]);
+                }}
+                className="pokemon-modal-buttons"
+                style={{ flex: 1, padding: '10px' }}
+              >
+                CANCELAR
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Menu como ventana modal independiente */}
