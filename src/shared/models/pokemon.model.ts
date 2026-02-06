@@ -1,4 +1,4 @@
-// types/pokemon.ts
+// shared/models/pokemon.model.ts
 
 export interface PokemonApiResponse {
   id: number;

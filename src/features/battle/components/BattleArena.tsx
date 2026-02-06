@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
-import type { Pokemon } from "../types/pokemon";
-import { loadTeamData } from "../utils/storage";
+import type { Pokemon, BattleState } from "../../../shared/models";
+import { loadTeamData } from "../../../shared/utils";
 import "../styles/battle-arena.css";
 
 interface BattleArenaProps {
@@ -9,24 +9,6 @@ interface BattleArenaProps {
   playerNumber: 1 | 2;
   team: Pokemon[];
   onExit: () => void;
-}
-
-interface BattleState {
-  player1: {
-    name: string;
-    pokemon: Pokemon | null;
-    hp: number;
-    maxHp: number;
-  };
-  player2: {
-    name: string;
-    pokemon: Pokemon | null;
-    hp: number;
-    maxHp: number;
-  };
-  turn: 1 | 2;
-  log: string[];
-  winner: string | null;
 }
 
 export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleArenaProps) {
@@ -143,7 +125,7 @@ export function BattleArena({ trainerName, playerNumber, team, onExit }: BattleA
     return () => {
       newSocket.disconnect();
     };
-  }, [trainerName, playerNumber, battleState?.player1.name, battleState?.player2.name]);
+  }, [trainerName, playerNumber]);
 
   const selectPokemon = (pokemon: Pokemon) => {
     if (!socket || selectedPokemon) return;
